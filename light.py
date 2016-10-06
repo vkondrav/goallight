@@ -18,11 +18,8 @@ HOUR = 3600
 team = str(sys.argv[1])
 league = str(sys.argv[2])
 video_delay = 0
-time_zone = "US/Pacific"
+time_zone = "US/Eastern"
 light = False
-
-print(team)
-print(league)
 
 # blinking function
 def blink(pin):
@@ -51,6 +48,7 @@ def alert():
 url = 'http://scores.nbcsports.msnbc.com/ticker/data/gamesMSNBC.js.asp?jsonp=true&sport=%s&period=%d'
 
 def today(score):
+  score = int(score)
   yyyymmdd = int(datetime.datetime.now(pytz.timezone(time_zone)).strftime("%Y%m%d"))
 
   delay = HOUR * 6
@@ -64,6 +62,15 @@ def today(score):
     f.close()
     json_str = jsonp.replace('shsMSNBCTicker.loadGamesData(', '').replace(');', '')
     json_parsed = json.loads(json_str)
+
+    os.environ['TZ'] = time_zone
+    
+    now = int(time.time())
+    nowDT = datetime.datetime.fromtimestamp(now).strftime("%d/%m/%y %H:%M:%S")
+
+    print("------------------------------------------------------------------------")
+    print ("Current Time: " + nowDT)
+    print("------------------------------------------------------------------------")
     
     for game_str in json_parsed.get('games', []):
       game_tree = ET.XML(game_str)
@@ -76,8 +83,8 @@ def today(score):
       home = home_tree.get('nickname').lower()
       away = away_tree.get('nickname').lower()
 
-      home_score = home_tree.get('score')
-      away_score = away_tree.get('score')
+      home_score = int(home_tree.get('score')) if home_tree.get('score') != "" else 0
+      away_score = int(away_tree.get('score')) if away_tree.get('score') != "" else 0
 
       status = gamestate_tree.get('status').lower();
 
@@ -87,51 +94,59 @@ def today(score):
       isFinal = status.find(FINAL)!=-1;
       isInProgress =  status.find(IN_PROGRESS)!=-1
 
-      os.environ['TZ'] = "US/Eastern"
+      gametime = gamestate_tree.get('gametime');
       
-      start = int(time.mktime(time.strptime('%s %d' % (gamestate_tree.get('gametime'), yyyymmdd), '%I:%M %p %Y%m%d')))
-
-      del os.environ['TZ']
-
-      now = int(time.time())
-      timediff = start-now
+      start = int(time.mktime(time.strptime('%s %d' % (gametime, yyyymmdd), '%I:%M %p %Y%m%d')))
       
-      print("Start time is " + str(start) + " and current time is " + str(now))
+      timediff = start - now
+
+      startDT = datetime.datetime.fromtimestamp(start).strftime("%d/%m/%y %H:%M:%S")
 
       if isHome or isAway:
               
                 print("------------------------------------------------------------------------")
-                print(away + ":" + away_score + " @ " + home + ":" + home_score + " | " + status)
+                print(away + ":" + str(away_score) + " @ " + home + ":" + str(home_score) + " | " + status)
+                print("Start Time: " + startDT)
                 print("------------------------------------------------------------------------")
                
                 nickname = home if isHome else away
 
                 if isPreGame:
-                        print(nickname + "are playing in " + str(timediff / 60) + " minutes")
+                        print("------------------------------------------------------------------------")
+                        print(nickname + " are playing in " + str(timediff / 60) + " minutes")
 
-                        if (start-now) < HOUR:
+                        if (start - now) < HOUR:
                                 print(home + " are playing whithin the next hour, setting refresh delay to 60 seconds")
                                 delay = 60
                         else:
                                 print(nickname + " are playing later today, setting refresh delay to 30 minutes")
                                 delay = HOUR / 2
+                        print("------------------------------------------------------------------------")
                         
                 if isFinal:
+                        print("------------------------------------------------------------------------")
                         print(nickname + " are done playing today, setting refresh delay to 6 hours")
+                        print("------------------------------------------------------------------------")
                         delay = HOUR * 6
 
                 if isInProgress:
-                        print(home + "are currently playing, setting refresh to 10 seconds")
+                        print("------------------------------------------------------------------------")
+                        print(home + " are currently playing, setting refresh to 10 seconds")
+                        print("------------------------------------------------------------------------")
                         isPlaying = True;
-                        n = home_score if isHome else away_score
                         delay = 10
 
-                        if n > score:
-                                print(nickname + " score! old score: " + str(score) + " and new score: " + n)
-                                score = n
-                                alert()
+                #check the score no matter the game state
+                n = home_score if isHome else away_score
+                if n > score:
+                        print("------------------------------------------------------------------------")
+                        print(nickname + " score! old score: " + str(score) + " and new score: " + str(n))
+                        print("------------------------------------------------------------------------")
+                        score = n
+                        alert()
       else:
-               print(away + ":" + away_score + " @ " + home + ":" + home_score + " | " + status)    
+               print(away + ":" + str(away_score) + " @ " + home + ":" + str(home_score) + " | " + status)
+               print("Start Time: " + startDT)
 
   except Exception, e:
     print e
@@ -151,5 +166,5 @@ if __name__ == "__main__":
             if not isPlaying:
                 print("Your team is not playing today or unable to get data, setting refresh to 6 hours")
 
-            print(str(delay) + " seconds")
+            print("Current Delay: " + str(delay) + " seconds")
             time.sleep(delay)
