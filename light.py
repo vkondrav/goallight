@@ -12,6 +12,7 @@ import sys
 IN_PROGRESS = "in-progress"
 PRE_GAME = "pre-game"
 FINAL = "final"
+DELAYED = "delayed"
 
 HOUR = 3600
 
@@ -36,19 +37,26 @@ def blink(pin):
         return
 
 def sound():
-        os.system("omxplayer ~/Documents/goallight/alert.wav")
+        os.system("omxplayer -o local ~/goallight/alert.wav")
         return
 
-def alert():
-        if light:
-                blink(12)
+def alert(scored):
+        if scored:
+                score()
         else:
-                sound()
+                fail()
+
+def score():
+        os.system("omxplayer -o local ~/goallight/goalhorn.mp3")
+        return
+
+def fail():
+        os.system("omxplayer -o local ~/goallight/fail.mp3")
+        return
 
 url = 'http://scores.nbcsports.msnbc.com/ticker/data/gamesMSNBC.js.asp?jsonp=true&sport=%s&period=%d'
 
-def today(score):
-  score = int(score)
+def today(score_for, score_against, firstTime):
   yyyymmdd = int(datetime.datetime.now(pytz.timezone(time_zone)).strftime("%Y%m%d"))
 
   delay = HOUR * 6
@@ -93,6 +101,7 @@ def today(score):
       isPreGame = status.find(PRE_GAME) != -1;
       isFinal = status.find(FINAL)!=-1;
       isInProgress =  status.find(IN_PROGRESS)!=-1
+      isDelayed = status.find(DELAYED) != -1
 
       gametime = gamestate_tree.get('gametime');
       
@@ -116,55 +125,72 @@ def today(score):
                         print(nickname + " are playing in " + str(timediff / 60) + " minutes")
 
                         if (start - now) < HOUR:
-                                print(home + " are playing whithin the next hour, setting refresh delay to 60 seconds")
+                                print(nickname + " are playing whithin the next hour, setting refresh delay to 60 seconds")
                                 delay = 60
                         else:
                                 print(nickname + " are playing later today, setting refresh delay to 30 minutes")
                                 delay = HOUR / 2
                         print("------------------------------------------------------------------------")
-                        
-                if isFinal:
-                        print("------------------------------------------------------------------------")
-                        print(nickname + " are done playing today, setting refresh delay to 6 hours")
-                        print("------------------------------------------------------------------------")
-                        delay = HOUR * 6
 
                 if isInProgress:
                         print("------------------------------------------------------------------------")
-                        print(home + " are currently playing, setting refresh to 10 seconds")
+                        print(nickname + " are currently playing, setting refresh to 10 seconds")
                         print("------------------------------------------------------------------------")
-                        isPlaying = True;
                         delay = 10
 
+                if isDelayed:
+                       print("------------------------------------------------------------------------")
+                       print(nickname + " are currently delayed, setting refresh to 1 minute")
+                       print("------------------------------------------------------------------------")
+                       delay = HOUR / 60 
+
                 #check the score no matter the game state
-                n = home_score if isHome else away_score
-                if n > score:
+                h = home_score if isHome else away_score
+                if h > score_for and not firstTime:
                         print("------------------------------------------------------------------------")
-                        print(nickname + " score! old score: " + str(score) + " and new score: " + str(n))
+                        print(nickname + " score!")
                         print("------------------------------------------------------------------------")
-                        score = n
-                        alert()
+                        alert(true)
+                score_for = h
+
+                a = away_score if isHome else home_score
+                if a > score_against and not firstTime:
+                        print("------------------------------------------------------------------------")
+                        print(nickname + " score on :(")
+                        print("------------------------------------------------------------------------")
+                        alert(false)
+                score_against = a
+
+                if isFinal:
+                        print("------------------------------------------------------------------------")
+                        print(nickname + " are done playing today, setting refresh delay to 12 hours")
+                        print("------------------------------------------------------------------------")
+                        delay = HOUR * 12
+                        
+                        if not firstTime:
+                                alert(score_for > score_against)
       else:
                print(away + ":" + str(away_score) + " @ " + home + ":" + str(home_score) + " | " + status)
                print("Start Time: " + startDT)
 
-  except Exception, e:
+  except Exception as e:
     print e
 
-  return (isPlaying, delay, score);
+  return (delay, score_for, score_against);
 
 if __name__ == "__main__":
 
-        score = 0
+        score_for = 0
+        score_against = 0
+        firstTime = True
         
         while True:
-            t = today(score)
-            isPlaying = t[0]
-            delay = t[1]
-            score = t[2]
+            t = today(score_for, score_against, firstTime)
+            delay = t[0]
+            score_for = t[1]
+            score_against = t[2]
             
-            if not isPlaying:
-                print("Your team is not playing today or unable to get data, setting refresh to 6 hours")
-
+            firstTime = False
+            
             print("Current Delay: " + str(delay) + " seconds")
             time.sleep(delay)
