@@ -67,136 +67,136 @@ class Game:
                 return lastState.find(IN_PROGRESS) != 1
 
 def today(game):
-  yyyymmdd = int(datetime.datetime.now(pytz.timezone(time_zone)).strftime("%Y%m%d"))
+        yyyymmdd = int(datetime.datetime.now(pytz.timezone(time_zone)).strftime("%Y%m%d"))
 
-  delay = HOUR * 6
-  isPlaying = False;
+        delay = HOUR * 6
+        isPlaying = False;
   
-  try:
-    print ((url % (league, yyyymmdd)))
-    f = urllib2.urlopen(url % (league, yyyymmdd))
+        try:
+                print ((url % (league, yyyymmdd)))
+                f = urllib2.urlopen(url % (league, yyyymmdd))
 
-    jsonp = f.read()
-    f.close()
-    json_str = jsonp.replace('shsMSNBCTicker.loadGamesData(', '').replace(');', '')
-    json_parsed = json.loads(json_str)
+                jsonp = f.read()
+                f.close()
+                json_str = jsonp.replace('shsMSNBCTicker.loadGamesData(', '').replace(');', '')
+                json_parsed = json.loads(json_str)
 
-    os.environ['TZ'] = time_zone
+                os.environ['TZ'] = time_zone
     
-    now = int(time.time())
-    nowDT = datetime.datetime.fromtimestamp(now).strftime("%d/%m/%y %H:%M:%S")
+                now = int(time.time())
+                nowDT = datetime.datetime.fromtimestamp(now).strftime("%d/%m/%y %H:%M:%S")
 
-    print("------------------------------------------------------------------------")
-    print ("Current Time: " + nowDT)
-    print("------------------------------------------------------------------------")
+                print("------------------------------------------------------------------------")
+                print ("Current Time: " + nowDT)
+                print("------------------------------------------------------------------------")
     
-    for game_str in json_parsed.get('games', []):
-      game_tree = ET.XML(game_str)
-      
-      away_tree = game_tree.find('visiting-team')
-      home_tree = game_tree.find('home-team')
-      
-      gamestate_tree = game_tree.find('gamestate')
-      
-      home = home_tree.get('nickname').lower()
-      away = away_tree.get('nickname').lower()
+                for game_str in json_parsed.get('games', []):
+                        game_tree = ET.XML(game_str)
+                      
+                        away_tree = game_tree.find('visiting-team')
+                        home_tree = game_tree.find('home-team')
+                      
+                        gamestate_tree = game_tree.find('gamestate')
+                      
+                        home = home_tree.get('nickname').lower()
+                        away = away_tree.get('nickname').lower()
 
-      home_score = int(home_tree.get('score')) if home_tree.get('score') != "" else 0
-      away_score = int(away_tree.get('score')) if away_tree.get('score') != "" else 0
+                        home_score = int(home_tree.get('score')) if home_tree.get('score') != "" else 0
+                        away_score = int(away_tree.get('score')) if away_tree.get('score') != "" else 0
 
-      status = gamestate_tree.get('status').lower();
+                        status = gamestate_tree.get('status').lower();
 
-      isHome = home.find(team) != -1;
-      isAway = away.find(team) != -1;
-      isPreGame = status.find(PRE_GAME) != -1;
-      isFinal = status.find(FINAL)!=-1;
-      isInProgress =  status.find(IN_PROGRESS)!=-1
-      isDelayed = status.find(DELAYED) != -1
+                        isHome = home.find(team) != -1;
+                        isAway = away.find(team) != -1;
+                        isPreGame = status.find(PRE_GAME) != -1;
+                        isFinal = status.find(FINAL)!=-1;
+                        isInProgress =  status.find(IN_PROGRESS)!=-1
+                        isDelayed = status.find(DELAYED) != -1
 
-      gametime = gamestate_tree.get('gametime');
-      
-      start = int(time.mktime(time.strptime('%s %d' % (gametime, yyyymmdd), '%I:%M %p %Y%m%d')))
-      
-      timediff = start - now
+                        gametime = gamestate_tree.get('gametime');
+                      
+                        start = int(time.mktime(time.strptime('%s %d' % (gametime, yyyymmdd), '%I:%M %p %Y%m%d')))
+                      
+                        timediff = start - now
 
-      startDT = datetime.datetime.fromtimestamp(start).strftime("%d/%m/%y %H:%M:%S")
+                        startDT = datetime.datetime.fromtimestamp(start).strftime("%d/%m/%y %H:%M:%S")
 
-      if isHome or isAway:
-              
-                print("------------------------------------------------------------------------")
-                print(away + ":" + str(away_score) + " @ " + home + ":" + str(home_score) + " | " + status)
-                print("Start Time: " + startDT)
-                print("------------------------------------------------------------------------")
-               
-                nickname = home if isHome else away
+                        if isHome or isAway:
+                              
+                                print("------------------------------------------------------------------------")
+                                print(away + ":" + str(away_score) + " @ " + home + ":" + str(home_score) + " | " + status)
+                                print("Start Time: " + startDT)
+                                print("------------------------------------------------------------------------")
+                               
+                                nickname = home if isHome else away
 
-                if isPreGame:
-                        print("------------------------------------------------------------------------")
-                        print(nickname + " are playing in " + str(timediff / 60) + " minutes")
+                                if isPreGame:
+                                        print("------------------------------------------------------------------------")
+                                        print(nickname + " are playing in " + str(timediff / 60) + " minutes")
 
-                        if (start - now) < HOUR:
-                                print(nickname + " are playing whithin the next hour, setting refresh delay to 60 seconds")
-                                game.delay = 60
+                                        if (start - now) < HOUR:
+                                                print(nickname + " are playing whithin the next hour, setting refresh delay to 60 seconds")
+                                                game.delay = 60
+                                        else:
+                                                print(nickname + " are playing later today, setting refresh delay to 30 minutes")
+                                                game.delay = HOUR / 2
+                                        print("------------------------------------------------------------------------")
+
+                                if isInProgress:
+                                        print("------------------------------------------------------------------------")
+                                        print(nickname + " are currently playing, setting refresh to 10 seconds")
+                                        print("------------------------------------------------------------------------")
+                                        game.delay = 10
+
+                                if isDelayed:
+                                       print("------------------------------------------------------------------------")
+                                       print(nickname + " are currently delayed, setting refresh to 1 minute")
+                                       print("------------------------------------------------------------------------")
+                                       game.delay = HOUR / 60 
+
+                                #check the score no matter the game state
+                                h = home_score if isHome else away_score
+
+                                if h > game.score_for and not game.firstTime:
+                                        print("------------------------------------------------------------------------")
+                                        print(nickname + " score!")
+                                        print("------------------------------------------------------------------------")
+                                        alert(True)
+                                game.score_for = h
+
+                                a = away_score if isHome else home_score
+                                if a > game.score_against and not game.firstTime:
+                                        print("------------------------------------------------------------------------")
+                                        print(nickname + " scored on :(")
+                                        print("------------------------------------------------------------------------")
+                                        alert(False)
+                                game.score_against = a
+
+                                if isFinal:
+                                        print("------------------------------------------------------------------------")
+                                        print(nickname + " are done playing today, setting refresh delay to 6 hours")
+                                        print("------------------------------------------------------------------------")
+                                        game.delay = HOUR * 6
+                                        
+                                        if not game.firstTime and game.isLastStatusInProgress():
+                                                alert(game.score_for > game.score_against)
+                                                
+                                game.lastStatus = status
                         else:
-                                print(nickname + " are playing later today, setting refresh delay to 30 minutes")
-                                game.delay = HOUR / 2
-                        print("------------------------------------------------------------------------")
+                               print(away + ":" + str(away_score) + " @ " + home + ":" + str(home_score) + " | " + status)
+                               print("Start Time: " + startDT)
 
-                if isInProgress:
-                        print("------------------------------------------------------------------------")
-                        print(nickname + " are currently playing, setting refresh to 10 seconds")
-                        print("------------------------------------------------------------------------")
-                        game.delay = 10
+        except Exception as e:
+                print e
 
-                if isDelayed:
-                       print("------------------------------------------------------------------------")
-                       print(nickname + " are currently delayed, setting refresh to 1 minute")
-                       print("------------------------------------------------------------------------")
-                       game.delay = HOUR / 60 
-
-                #check the score no matter the game state
-                h = home_score if isHome else away_score
-
-                if h > game.score_for and not game.firstTime:
-                        print("------------------------------------------------------------------------")
-                        print(nickname + " score!")
-                        print("------------------------------------------------------------------------")
-                        alert(True)
-                game.score_for = h
-
-                a = away_score if isHome else home_score
-                if a > game.score_against and not game.firstTime:
-                        print("------------------------------------------------------------------------")
-                        print(nickname + " scored on :(")
-                        print("------------------------------------------------------------------------")
-                        alert(False)
-                game.score_against = a
-
-                if isFinal:
-                        print("------------------------------------------------------------------------")
-                        print(nickname + " are done playing today, setting refresh delay to 6 hours")
-                        print("------------------------------------------------------------------------")
-                        game.delay = HOUR * 6
-                        
-                        if not game.firstTime and game.isLastStatusInProgress():
-                                alert(game.score_for > game.score_against)
-                                
-                game.lastStatus = status
-      else:
-               print(away + ":" + str(away_score) + " @ " + home + ":" + str(home_score) + " | " + status)
-               print("Start Time: " + startDT)
-
-  except Exception as e:
-    print e
-
-  game.firstTime = False
+        game.firstTime = False
 
 if __name__ == "__main__":
 
         game = Game()
         
         while True:
-            today(game)
+                today(game)
             
-            print("Current Delay: " + str(game.delay) + " seconds")
-            time.sleep(game.delay)
+                print("Current Delay: " + str(game.delay) + " seconds")
+                time.sleep(game.delay)
