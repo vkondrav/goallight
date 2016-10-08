@@ -56,7 +56,17 @@ def fail():
 
 url = 'http://scores.nbcsports.msnbc.com/ticker/data/gamesMSNBC.js.asp?jsonp=true&sport=%s&period=%d'
 
-def today(score_for, score_against, firstTime):
+class Game:
+        delay = 10
+        score_for = 0
+        score_against = 0
+        firstTime = True
+        lastState = ""
+
+        def isLastStatusInProgress(self):
+                return lastState.find(IN_PROGRESS) != 1
+
+def today(game):
   yyyymmdd = int(datetime.datetime.now(pytz.timezone(time_zone)).strftime("%Y%m%d"))
 
   delay = HOUR * 6
@@ -126,49 +136,52 @@ def today(score_for, score_against, firstTime):
 
                         if (start - now) < HOUR:
                                 print(nickname + " are playing whithin the next hour, setting refresh delay to 60 seconds")
-                                delay = 60
+                                game.delay = 60
                         else:
                                 print(nickname + " are playing later today, setting refresh delay to 30 minutes")
-                                delay = HOUR / 2
+                                game.delay = HOUR / 2
                         print("------------------------------------------------------------------------")
 
                 if isInProgress:
                         print("------------------------------------------------------------------------")
                         print(nickname + " are currently playing, setting refresh to 10 seconds")
                         print("------------------------------------------------------------------------")
-                        delay = 10
+                        game.delay = 10
 
                 if isDelayed:
                        print("------------------------------------------------------------------------")
                        print(nickname + " are currently delayed, setting refresh to 1 minute")
                        print("------------------------------------------------------------------------")
-                       delay = HOUR / 60 
+                       game.delay = HOUR / 60 
 
                 #check the score no matter the game state
                 h = home_score if isHome else away_score
-                if h > score_for and not firstTime:
+
+                if h > game.score_for and not game.firstTime:
                         print("------------------------------------------------------------------------")
                         print(nickname + " score!")
                         print("------------------------------------------------------------------------")
-                        alert(true)
-                score_for = h
+                        alert(True)
+                game.score_for = h
 
                 a = away_score if isHome else home_score
-                if a > score_against and not firstTime:
+                if a > game.score_against and not game.firstTime:
                         print("------------------------------------------------------------------------")
-                        print(nickname + " score on :(")
+                        print(nickname + " scored on :(")
                         print("------------------------------------------------------------------------")
-                        alert(false)
-                score_against = a
+                        alert(False)
+                game.score_against = a
 
                 if isFinal:
                         print("------------------------------------------------------------------------")
-                        print(nickname + " are done playing today, setting refresh delay to 12 hours")
+                        print(nickname + " are done playing today, setting refresh delay to 6 hours")
                         print("------------------------------------------------------------------------")
-                        delay = HOUR * 12
+                        game.delay = HOUR * 6
                         
-                        if not firstTime:
-                                alert(score_for > score_against)
+                        if not game.firstTime and game.isLastStatusInProgress():
+                                alert(game.score_for > game.score_against)
+                                
+                game.lastStatus = status
       else:
                print(away + ":" + str(away_score) + " @ " + home + ":" + str(home_score) + " | " + status)
                print("Start Time: " + startDT)
@@ -176,21 +189,14 @@ def today(score_for, score_against, firstTime):
   except Exception as e:
     print e
 
-  return (delay, score_for, score_against);
+  game.firstTime = False
 
 if __name__ == "__main__":
 
-        score_for = 0
-        score_against = 0
-        firstTime = True
+        game = Game()
         
         while True:
-            t = today(score_for, score_against, firstTime)
-            delay = t[0]
-            score_for = t[1]
-            score_against = t[2]
+            today(game)
             
-            firstTime = False
-            
-            print("Current Delay: " + str(delay) + " seconds")
-            time.sleep(delay)
+            print("Current Delay: " + str(game.delay) + " seconds")
+            time.sleep(game.delay)
