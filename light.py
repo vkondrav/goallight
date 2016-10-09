@@ -70,7 +70,8 @@ def today(game):
                 print("------------------------------------------------------------------------")
                 print ("Current Time: " + nowDT)
                 print("------------------------------------------------------------------------")
-    
+
+                game.arePlaying = False;
                 for game_str in json_parsed.get('games', []):
                         game_tree = ET.XML(game_str)
                       
