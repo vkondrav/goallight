@@ -5,7 +5,6 @@ import urllib2
 import json
 import os
 import xml.etree.ElementTree as ET
-import RPi.GPIO as GPIO
 import time
 import sys
 
@@ -22,24 +21,6 @@ video_delay = 0
 time_zone = "US/Eastern"
 light = False
 
-# blinking function
-def blink(pin):
-        GPIO.setmode(GPIO.BOARD)
-        if video_delay>0:
-                 print("Delay is " + str(video_delay) + " ...pausing")
-                 time.sleep(video_delay)
-        GPIO.setup(pin, GPIO.OUT)
-        GPIO.output(pin,GPIO.HIGH)
-        time.sleep(3)
-        GPIO.output(pin,GPIO.LOW)
-        time.sleep(1)
-        GPIO.cleanup()
-        return
-
-def sound():
-        os.system("omxplayer -o local ~/goallight/alert.wav")
-        return
-
 def alert(scored):
         if scored:
                 score()
@@ -47,11 +28,11 @@ def alert(scored):
                 fail()
 
 def score():
-        os.system("omxplayer -o local ~/goallight/goalhorn.mp3")
+        os.system("omxplayer -o both ~/goallight/goalhorn.mp3")
         return
 
 def fail():
-        os.system("omxplayer -o local ~/goallight/fail.mp3")
+        os.system("omxplayer -o both ~/goallight/fail.mp3")
         return
 
 url = 'http://scores.nbcsports.msnbc.com/ticker/data/gamesMSNBC.js.asp?jsonp=true&sport=%s&period=%d'
@@ -62,15 +43,15 @@ class Game:
         score_against = 0
         firstTime = True
         lastState = ""
+        arePlaying = False
 
         def isLastStatusInProgress(self):
-                return lastState.find(IN_PROGRESS) != 1
+                return self.lastState.find(IN_PROGRESS) != 1
 
 def today(game):
         yyyymmdd = int(datetime.datetime.now(pytz.timezone(time_zone)).strftime("%Y%m%d"))
 
         delay = HOUR * 6
-        isPlaying = False;
   
         try:
                 print ((url % (league, yyyymmdd)))
@@ -122,6 +103,8 @@ def today(game):
                         startDT = datetime.datetime.fromtimestamp(start).strftime("%d/%m/%y %H:%M:%S")
 
                         if isHome or isAway:
+
+                                game.arePlaying = True
                               
                                 print("------------------------------------------------------------------------")
                                 print(away + ":" + str(away_score) + " @ " + home + ":" + str(home_score) + " | " + status)
@@ -188,6 +171,12 @@ def today(game):
 
         except Exception as e:
                 print e
+
+        if not game.arePlaying:
+                print("------------------------------------------------------------------------")
+                print(team + " are not playing today, setting refresh delay to 6 hours")
+                print("------------------------------------------------------------------------")
+                game.delay = HOUR * 6   
 
         game.firstTime = False
 
