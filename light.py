@@ -1,7 +1,7 @@
 import pytz
 import datetime
 import time
-import urllib2
+from urllib.request import urlopen
 import json
 import os
 import xml.etree.ElementTree as ET
@@ -55,9 +55,9 @@ def today(game):
   
         try:
                 print ((url % (league, yyyymmdd)))
-                f = urllib2.urlopen(url % (league, yyyymmdd))
+                f = urlopen(url % (league, yyyymmdd))
 
-                jsonp = f.read()
+                jsonp = f.read().decode("utf-8")
                 f.close()
                 json_str = jsonp.replace('shsMSNBCTicker.loadGamesData(', '').replace(');', '')
                 json_parsed = json.loads(json_str)
@@ -171,7 +171,7 @@ def today(game):
                                print("Start Time: " + startDT)
 
         except Exception as e:
-                print e
+                print (e)
 
         if not game.arePlaying:
                 print("------------------------------------------------------------------------")
