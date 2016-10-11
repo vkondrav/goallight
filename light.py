@@ -35,6 +35,12 @@ def fail():
         os.system("omxplayer -o both ~/goallight/fail.mp3")
         return
 
+def tts(text):
+        os.system("google_speech -l en '" + text + "'" + " -e overdrive 10")
+
+def ttsGame(away, home, away_score, home_score):
+        tts("." + away + ". " + str(away_score) + ". " + home + ". " + str(home_score))
+
 url = 'http://scores.nbcsports.msnbc.com/ticker/data/gamesMSNBC.js.asp?jsonp=true&sport=%s&period=%d'
 
 class Game:
@@ -42,11 +48,11 @@ class Game:
         score_for = 0
         score_against = 0
         firstTime = True
-        lastState = ""
+        lastStatus = ""
         arePlaying = False
 
         def isLastStatusInProgress(self):
-                return self.lastState.find(IN_PROGRESS) != 1
+                return self.lastStatus.find(IN_PROGRESS) != -1
 
 def today(game):
         yyyymmdd = int(datetime.datetime.now(pytz.timezone(time_zone)).strftime("%Y%m%d"))
@@ -91,8 +97,8 @@ def today(game):
                         isHome = home.find(team) != -1;
                         isAway = away.find(team) != -1;
                         isPreGame = status.find(PRE_GAME) != -1;
-                        isFinal = status.find(FINAL)!=-1;
-                        isInProgress =  status.find(IN_PROGRESS)!=-1
+                        isFinal = status.find(FINAL)!= -1;
+                        isInProgress =  status.find(IN_PROGRESS)!= -1
                         isDelayed = status.find(DELAYED) != -1
 
                         gametime = gamestate_tree.get('gametime');
@@ -132,6 +138,12 @@ def today(game):
                                         print("------------------------------------------------------------------------")
                                         game.delay = 10
 
+                                        if not game.isLastStatusInProgress():
+                                                print("------------------------------------------------------------------------")
+                                                print(nickname + " have started playing, setting refresh to 10 seconds")
+                                                print("------------------------------------------------------------------------")
+                                                tts(nickname + " have started playing")
+                                                ttsGame(away, home, away_score, home_score)
                                 if isDelayed:
                                        print("------------------------------------------------------------------------")
                                        print(nickname + " are currently delayed, setting refresh to 1 minute")
@@ -146,6 +158,7 @@ def today(game):
                                         print(nickname + " score!")
                                         print("------------------------------------------------------------------------")
                                         alert(True)
+                                        ttsGame(away, home, away_score, home_score)
                                 game.score_for = h
 
                                 a = away_score if isHome else home_score
@@ -154,6 +167,7 @@ def today(game):
                                         print(nickname + " scored on :(")
                                         print("------------------------------------------------------------------------")
                                         alert(False)
+                                        ttsGame(away, home, away_score, home_score)
                                 game.score_against = a
 
                                 if isFinal:
@@ -164,8 +178,11 @@ def today(game):
                                         
                                         if not game.firstTime and game.isLastStatusInProgress():
                                                 alert(game.score_for > game.score_against)
+                                                tts(nickname + " have finished playing")
+                                                ttsGame(away, home, away_score, home_score)
                                                 
                                 game.lastStatus = status
+                                print (game.lastStatus)
                         else:
                                print(away + ":" + str(away_score) + " @ " + home + ":" + str(home_score) + " | " + status)
                                print("Start Time: " + startDT)
