@@ -1,10 +1,11 @@
-import pytz
-import datetime
+from datetime import datetime, timedelta
+from dateutil import tz
 from urllib.request import urlopen
 import json
 import time
 import sys
 import os
+import re
 
 IN_PROGRESS = "in-progress"
 PRE_GAME = "preview"
@@ -14,7 +15,6 @@ DELAYED = "delayed"
 HOUR = 3600
 
 team = str(sys.argv[1])
-time_zone = "US/Eastern"
 
 def alert(scored):
         if scored:
@@ -31,12 +31,14 @@ def fail():
         return
 
 def tts(text):
-        os.system("google_speech -l en '" + text + "'" + " -e overdrive 10")
+        os.system("google_speech -l en '" + text + "'" + " -e overdrive 20")
 
 def ttsGame(away, home, away_score, home_score):
         tts("." + away + ". " + str(away_score) + ". " + home + ". " + str(home_score))
 
 url = "https://statsapi.web.nhl.com/api/v1/schedule?startDate=%s&endDate=%s&expand=schedule.linescore&site=en_nhlCA"
+
+url_live = "https://statsapi.web.nhl.com/api/v1/game/%s/feed/live"
 
 class Game:
         delay = 10
@@ -51,19 +53,18 @@ class Game:
 
 def today(game):
 
-	yyyymmdd = str(datetime.datetime.now(pytz.timezone(time_zone)).strftime("%Y-%m-%d"))
+	d = datetime.today() - timedelta(days=0)
+	yyyymmdd = d.strftime("%Y-%m-%d")
 
 	try:
-		print ((url % (yyyymmdd, yyyymmdd)))
+		print (url % (yyyymmdd, yyyymmdd))
 
 		f = urlopen(url % (yyyymmdd, yyyymmdd))
 		j = json.loads(f.read().decode("utf-8"))
 		f.close()
 
-		os.environ['TZ'] = time_zone
-
-		now = int(time.time())
-		nowDT = datetime.datetime.fromtimestamp(now).strftime("%d/%m/%y %H:%M:%S")
+		now = datetime.now().timestamp()
+		nowDT = datetime.now().strftime("%d/%m/%y %H:%M:%S")
 
 		print("------------------------------------------------------------------------")
 		print("Current Time: " + nowDT)
@@ -75,6 +76,8 @@ def today(game):
 
 				if "games" in date:
 					for g in date["games"]:
+
+						pk = str(g["gamePk"])
 
 						homeTeam = g["teams"]["home"]
 						awayTeam = g["teams"]["away"]
@@ -98,13 +101,17 @@ def today(game):
 						isInProgress =  status.find(IN_PROGRESS)!= -1
 						isDelayed = status.find(DELAYED) != -1
 
-						start = int(time.mktime(time.strptime(gameDate, "%Y-%m-%dT%H:%M:%SZ")))
+						utc = datetime.strptime(gameDate, "%Y-%m-%dT%H:%M:%SZ")
+						utc = utc.replace(tzinfo=tz.tzutc())
+						local = utc.astimezone(tz.tzlocal())
 
+						start = local.timestamp()
 						timediff = start - now
 
-						startDT = datetime.datetime.fromtimestamp(start).strftime("%d/%m/%y %H:%M:%S")
+						startDT = datetime.fromtimestamp(start).strftime("%d/%m/%y %I:%M:%S %p")
 
 						if isHome or isAway:
+
 							game.arePlaying = True
 
 							print("------------------------------------------------------------------------")
@@ -113,6 +120,25 @@ def today(game):
 							print("------------------------------------------------------------------------")
 
 							nickname = home if isHome else away
+
+							print (url_live % pk)
+
+							f = urlopen(url_live % pk)
+							jlive = json.loads(f.read().decode("utf-8"))
+							f.close
+
+							lastPlay = "Not available"
+
+							try:
+								lastPlay = jlive["liveData"]["plays"]["currentPlay"]["result"]["description"]
+							except Exception as e:
+								print ("No last play to get")
+
+							print("------------------------------------------------------------------------")
+							print("Last Play: " + lastPlay)
+							print("------------------------------------------------------------------------")
+
+							lastPlay = re.sub('\(.*?\)', '', lastPlay) #strip last play of goal/points
 
 							if isPreGame:
 								print("------------------------------------------------------------------------")
@@ -153,6 +179,7 @@ def today(game):
 								print("------------------------------------------------------------------------")
 								alert(True)
 								ttsGame(away, home, away_score, home_score)
+								tts(lastPlay)
 							game.score_for = h
 
 							a = away_score if isHome else home_score
@@ -162,6 +189,7 @@ def today(game):
 								print("------------------------------------------------------------------------")
 								alert(False)
 								ttsGame(away, home, away_score, home_score)
+								tts(lastPlay)
 							game.score_against = a
 
 							if isFinal:
@@ -174,9 +202,9 @@ def today(game):
 									alert(game.score_for > game.score_against)
 									tts(nickname + " have finished playing")
 									ttsGame(away, home, away_score, home_score)
+									tts(lastPlay)
 	                                        
 							game.lastStatus = status
-							print (game.lastStatus)
 						else:
 							print(away + ":" + str(away_score) + " @ " + home + ":" + str(home_score) + " | " + status)
 							print("Start Time: " + startDT)
