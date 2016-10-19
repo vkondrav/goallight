@@ -222,7 +222,7 @@ def today(game):
 		print("------------------------------------------------------------------------")
 		game.delay = HOUR * 6   
 		
-		game.firstTime = False
+	game.firstTime = False
 
 if __name__ == "__main__":
 
