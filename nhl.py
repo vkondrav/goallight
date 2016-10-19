@@ -54,10 +54,10 @@ class Game:
 
 def today(game):
 
-	eastern = pytz.timezone('US/Pacific-New') #this timezone is good at covering all the nhl game dates
-	easternCorrected = datetime.now(eastern)
-	start_date = (easternCorrected - timedelta(days=0)).strftime("%Y-%m-%d")
-	end_date = (easternCorrected + timedelta(days=0)).strftime("%Y-%m-%d")
+	pacific = pytz.timezone('US/Pacific-New') #this timezone is good at covering all the nhl game dates
+	pacificCorrected = datetime.now(pacific)
+	start_date = (pacificCorrected - timedelta(days=0)).strftime("%Y-%m-%d")
+	end_date = (pacificCorrected + timedelta(days=0)).strftime("%Y-%m-%d")
 
 	try:
 		print (url % (start_date, end_date))
