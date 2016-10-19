@@ -56,6 +56,11 @@ def today(game):
 
 	pacific = pytz.timezone('US/Pacific-New') #this timezone is good at covering all the nhl game dates
 	pacificCorrected = datetime.now(pacific)
+
+	print("------------------------------------------------------------------------")
+	print("Pacific Corrected Time: " + pacificCorrected.strftime("%d/%m/%y %I:%M:%S %p"))
+	print("------------------------------------------------------------------------")
+
 	start_date = (pacificCorrected - timedelta(days=0)).strftime("%Y-%m-%d")
 	end_date = (pacificCorrected + timedelta(days=0)).strftime("%Y-%m-%d")
 
@@ -87,9 +92,6 @@ def today(game):
 
 						home = homeTeam["team"]["name"].lower()
 						away = awayTeam["team"]["name"].lower()
-
-						homeTriCode = homeTeam["team"]["triCode"].lower()
-						awayTriCode = awayTeam["team"]["triCode"].lower()
 
 						status = g["status"]["abstractGameState"].lower()
 						gameDate = g["gameDate"]
