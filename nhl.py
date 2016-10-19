@@ -7,6 +7,7 @@ import sys
 import os
 import re
 import pytz
+import nhl_settings
 
 IN_PROGRESS = "live"
 PRE_GAME = "preview"
@@ -15,7 +16,7 @@ DELAYED = "delayed"
 
 HOUR = 3600
 
-team = str(sys.argv[1])
+team = nhl_settings.team
 
 def alert(scored):
         if scored:
@@ -24,15 +25,16 @@ def alert(scored):
                 fail()
 
 def score():
-        os.system("omxplayer -o both ~/goallight/goalhorn.mp3")
+        os.system("omxplayer -o both " + nhl_settings.goal_sound_location)
         return
 
 def fail():
-        os.system("omxplayer -o both ~/goallight/fail.mp3")
+        os.system("omxplayer -o both " + nhl_settings.fail_sound_location)
         return
 
 def tts(text):
-        os.system("google_speech -l en '" + text + "'" + " -e overdrive 20")
+		if nhl_settings.read_game_status:
+			os.system("google_speech -l en '" + text + "'" + " -e overdrive " + nhl_settings.google_speech_overdrive)
 
 def ttsGame(away, home, away_score, home_score):
         tts("." + away + ". " + str(away_score) + ". " + home + ". " + str(home_score))
@@ -42,7 +44,7 @@ url = "https://statsapi.web.nhl.com/api/v1/schedule?startDate=%s&endDate=%s&expa
 url_live = "https://statsapi.web.nhl.com/api/v1/game/%s/feed/live"
 
 class Game:
-        delay = 10
+        delay = nhl_settings.live_rate
         score_for = 0
         score_against = 0
         firstTime = True
@@ -210,7 +212,8 @@ def today(game):
 									tts(lastPlay)
 	                                        
 							game.lastStatus = status
-						else:
+						elif nhl_settings.show_other_games:
+
 							print(away + ":" + str(away_score) + " @ " + home + ":" + str(home_score) + " | " + status)
 							print("Start Time: " + startDT)
 	except Exception as e:
