@@ -6,6 +6,7 @@ import time
 import sys
 import os
 import re
+import pytz
 
 IN_PROGRESS = "live"
 PRE_GAME = "preview"
@@ -53,13 +54,15 @@ class Game:
 
 def today(game):
 
-	d = datetime.today().replace(tzinfo=tz.tzutc()) - timedelta(days=0)
-	yyyymmdd = d.strftime("%Y-%m-%d")
+	eastern = pytz.timezone('US/Pacific-New') #this timezone is good at covering all the nhl game dates
+	easternCorrected = datetime.now(eastern)
+	start_date = (easternCorrected - timedelta(days=0)).strftime("%Y-%m-%d")
+	end_date = (easternCorrected + timedelta(days=0)).strftime("%Y-%m-%d")
 
 	try:
-		print (url % (yyyymmdd, yyyymmdd))
+		print (url % (start_date, end_date))
 
-		f = urlopen(url % (yyyymmdd, yyyymmdd))
+		f = urlopen(url % (start_date, end_date))
 		j = json.loads(f.read().decode("utf-8"))
 		f.close()
 
