@@ -7,7 +7,7 @@ import sys
 import os
 import re
 
-IN_PROGRESS = "in-progress"
+IN_PROGRESS = "live"
 PRE_GAME = "preview"
 FINAL = "final"
 DELAYED = "delayed"
@@ -53,7 +53,7 @@ class Game:
 
 def today(game):
 
-	d = datetime.today() - timedelta(days=0)
+	d = datetime.today().replace(tzinfo=tz.tzutc()) - timedelta(days=0)
 	yyyymmdd = d.strftime("%Y-%m-%d")
 
 	try:
@@ -64,7 +64,7 @@ def today(game):
 		f.close()
 
 		now = datetime.now().timestamp()
-		nowDT = datetime.now().strftime("%d/%m/%y %H:%M:%S")
+		nowDT = datetime.now().strftime("%d/%m/%y %I:%M:%S %p")
 
 		print("------------------------------------------------------------------------")
 		print("Current Time: " + nowDT)
@@ -108,7 +108,7 @@ def today(game):
 						start = local.timestamp()
 						timediff = start - now
 
-						startDT = datetime.fromtimestamp(start).strftime("%d/%m/%y %I:%M:%S %p")
+						startDT = local.strftime("%d/%m/%y %I:%M:%S %p")
 
 						if isHome or isAway:
 
@@ -127,12 +127,12 @@ def today(game):
 							jlive = json.loads(f.read().decode("utf-8"))
 							f.close
 
-							lastPlay = "Not available"
+							lastPlay = "Not Available"
 
 							try:
 								lastPlay = jlive["liveData"]["plays"]["currentPlay"]["result"]["description"]
 							except Exception as e:
-								print ("No last play to get")
+								e #nothing to really do here
 
 							print("------------------------------------------------------------------------")
 							print("Last Play: " + lastPlay)
